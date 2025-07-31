@@ -1,3 +1,8 @@
+# Generate Simulated Dataset
+
+This is a fork of simglucose to generate simulated data: [README.md](data_generation%2FREADME.md)
+
+
 # simglucose
 
 [![Downloads](https://static.pepy.tech/badge/simglucose)](https://pepy.tech/project/simglucose)

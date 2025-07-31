@@ -40,8 +40,11 @@ class RandomScenario(Scenario):
         time_ub = np.array([9, 10, 14, 16, 20, 23]) * 60
         time_mu = np.array([7, 9.5, 12, 15, 18, 21.5]) * 60
         time_sigma = np.array([60, 30, 60, 30, 60, 30])
-        amount_mu = [45, 10, 70, 10, 80, 10]
-        amount_sigma = [10, 5, 10, 5, 10, 5]
+        amount_mu = [45, 10, 70, 10, 80, 10]  # This is the baseline amounts of carbs for each meal
+
+        # This is the std amounts for carbs for each meal. We try to increase the stdDev to get higher variation
+        # amount_sigma = [10, 5, 10, 5, 10, 5]
+        amount_sigma = [30, 30, 50, 30, 60, 30]
 
         for p, tlb, tub, tbar, tsd, mbar, msd in zip(prob, time_lb, time_ub,
                                                      time_mu, time_sigma,
