@@ -1,18 +1,20 @@
-from .base import Controller
+from simglucose.controller.basal_bolus_ctrller import BBController
 from .base import Action
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class PIDController(Controller):
-    def __init__(self, P=1, I=0, D=0, target=140):
+class PIDController(BBController):
+    def __init__(self, P=1, I=0, D=0, target=140, is_fully_automated=True):
+        super(PIDController, self).__init__(target=target)
         self.P = P
         self.I = I
         self.D = D
         self.target = target
         self.integrated_state = 0
         self.prev_state = 0
+        self.is_fully_automated = is_fully_automated
 
     def policy(self, observation, reward, done, **kwargs):
         sample_time = kwargs.get('sample_time')
@@ -32,8 +34,14 @@ class PIDController(Controller):
         logger.info('integrated state: {}'.format(self.integrated_state))
 
         # return the action
-        action = Action(basal=control_input, bolus=0)
-        return action
+        if self.is_fully_automated:
+            action = Action(basal=control_input, bolus=0)
+            return action
+        else:
+            bb_action = super(PIDController, self).policy(observation, reward, done, **kwargs)
+            basal = bb_action.basal + control_input
+            action = Action(basal=basal, bolus=bb_action.bolus)
+            return action
 
     def reset(self):
         self.integrated_state = 0
