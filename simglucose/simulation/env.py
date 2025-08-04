@@ -61,21 +61,25 @@ class T1DSimEnv(object):
         BG = self.patient.observation.Gsub
         CGM = self.sensor.measure(self.patient)
 
-        return CHO, insulin, BG, CGM
+        return CHO, insulin, BG, CGM, basal, bolus
 
     def step(self, action, reward_fun=risk_diff):
         """
         action is a namedtuple with keys: basal, bolus
         """
         CHO = 0.0
+        basal = 0.0
+        bolus = 0.0
         insulin = 0.0
         BG = 0.0
         CGM = 0.0
 
         for _ in range(int(self.sample_time)):
             # Compute moving average as the sample measurements
-            tmp_CHO, tmp_insulin, tmp_BG, tmp_CGM = self.mini_step(action)
+            tmp_CHO, tmp_insulin, tmp_BG, tmp_CGM, tmp_basal, tmp_bolus = self.mini_step(action)
             CHO += tmp_CHO / self.sample_time
+            basal += tmp_basal / self.sample_time
+            bolus += tmp_bolus / self.sample_time
             insulin += tmp_insulin / self.sample_time
             BG += tmp_BG / self.sample_time
             CGM += tmp_CGM / self.sample_time
@@ -86,6 +90,8 @@ class T1DSimEnv(object):
 
         # Record current action
         self.CHO_hist.append(CHO)
+        self.basal_hist.append(basal)
+        self.bolus_hist.append(bolus)
         self.insulin_hist.append(insulin)
 
         # Record next observation
@@ -133,6 +139,8 @@ class T1DSimEnv(object):
         self.LBGI_hist = [LBGI]
         self.HBGI_hist = [HBGI]
         self.CHO_hist = []
+        self.basal_hist = []
+        self.bolus_hist = []
         self.insulin_hist = []
 
     def reset(self):
@@ -179,6 +187,8 @@ class T1DSimEnv(object):
         df["BG"] = pd.Series(self.BG_hist)
         df["CGM"] = pd.Series(self.CGM_hist)
         df["CHO"] = pd.Series(self.CHO_hist)
+        df["basal"] = pd.Series(self.basal_hist)
+        df["bolus"] = pd.Series(self.bolus_hist)
         df["insulin"] = pd.Series(self.insulin_hist)
         df["LBGI"] = pd.Series(self.LBGI_hist)
         df["HBGI"] = pd.Series(self.HBGI_hist)

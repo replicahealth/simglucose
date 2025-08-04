@@ -39,8 +39,7 @@ class PIDController(BBController):
             return action
         else:
             bb_action = super(PIDController, self).policy(observation, reward, done, **kwargs)
-            basal = bb_action.basal + control_input
-            action = Action(basal=basal, bolus=bb_action.bolus)
+            action = Action(basal=bb_action.basal, bolus=bb_action.bolus)
             return action
 
     def reset(self):

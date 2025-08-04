@@ -17,11 +17,12 @@ class LoopController(Controller):
     This is the LoopAlgorithm set with some basic settings.
     """
 
-    def __init__(self, target=140):
+    def __init__(self, target=140, recommendation_type='tempBasal'):
         self.quest = pd.read_csv(CONTROL_QUEST)
         self.patient_params = pd.read_csv(PATIENT_PARA_FILE)
         self.target = target
         self.observations = {}
+        self.recommendation_type = recommendation_type
 
     def policy(self, observation, reward, done, **kwargs):
         sample_time = kwargs.get('sample_time', 1)
@@ -60,11 +61,30 @@ class LoopController(Controller):
             return Action(basal=basal, bolus=0)
 
         # Get data input for the Loop Algorithm insulin recommendation
+        df_observations = df_observations.sort_index().tail(int(12*60 // env_sample_time))
         json_data = get_json_loop_prediction_input_from_df(df_observations, basal_pr_hr, isf, cr,
                                                            prediction_start=datetime, insulin_type='novolog')
+
+        if meal > 0:
+            # Add manual bolus for meals
+            json_data['recommendationType'] = 'manualBolus'
+            dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
+            basal_rec = 0.0
+            bolus_rec = dose_recommendations['manual']['amount']
+            self.add_patient_observation(name, datetime, glucose, basal=basal_rec, bolus=bolus_rec, carbs=meal)
+            action = Action(basal=basal_rec / 60, bolus=bolus_rec / env_sample_time)
+            return action
+
+        # Setting max basal to the double of the scheduled basal rate
+        json_data['maxBasalRate'] = basal_pr_hr * 2
+        json_data['recommendationType'] = self.recommendation_type  # Can be: "automaticBolus", "tempBasal"
+
         dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
         basal_rec = dose_recommendations['automatic']['basalAdjustment']['unitsPerHour']
-        bolus_rec = dose_recommendations['automatic']['bolusUnits']
+        if 'bolusUnits' in dose_recommendations['automatic']:
+            bolus_rec = dose_recommendations['automatic']['bolusUnits']
+        else:
+            bolus_rec = 0.0
 
         # Overwrite patient data iteration with insulin action
         self.add_patient_observation(name, datetime, glucose, basal=basal_rec, bolus=bolus_rec, carbs=meal)

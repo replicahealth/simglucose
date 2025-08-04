@@ -1,6 +1,5 @@
 from .base import Controller
 from .base import Action
-import numpy as np
 import pandas as pd
 import pkg_resources
 import logging
