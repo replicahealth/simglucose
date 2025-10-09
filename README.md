@@ -65,6 +65,11 @@ If you do not have `pip`, then
 python setup.py install
 ```
 
+Push to the fork: 
+```bash
+git push -u simglucose master
+```
+
 If [rllab (optional)](https://github.com/rll/rllab) is installed, the package will utilize some functionalities in rllab.
 
 Note: there might be some minor differences between auto install version and manual install version. Use `git clone` and manual installation to get the latest version.

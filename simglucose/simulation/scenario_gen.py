@@ -43,8 +43,8 @@ class RandomScenario(Scenario):
         amount_mu = [45, 10, 70, 10, 80, 10]  # This is the baseline amounts of carbs for each meal
 
         # This is the std amounts for carbs for each meal. We try to increase the stdDev to get higher variation
-        # amount_sigma = [10, 5, 10, 5, 10, 5]
-        amount_sigma = [30, 30, 50, 30, 60, 30]
+        amount_sigma = [10, 5, 10, 5, 10, 5]
+        # amount_sigma = [30, 30, 50, 30, 60, 30]
 
         for p, tlb, tub, tbar, tsd, mbar, msd in zip(prob, time_lb, time_ub,
                                                      time_mu, time_sigma,
