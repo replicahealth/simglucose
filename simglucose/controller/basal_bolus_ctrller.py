@@ -55,7 +55,7 @@ class BBController(Controller):
                 name)]
             u2ss = params.u2ss.values.item()  # unit: pmol/(L*kg)
             BW = params.BW.values.item()  # unit: kg
-            TDD = params.TDI.values.item()
+            TDD = quest.TDI.values[0]
         else:
             quest = pd.DataFrame([['Average', 1 / 15, 1 / 50, 50, 30]],
                                  columns=['Name', 'CR', 'CF', 'TDI', 'Age'])
