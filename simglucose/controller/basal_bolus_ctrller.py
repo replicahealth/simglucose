@@ -17,10 +17,11 @@ class BBController(Controller):
     Diabetes patient. The performance of this controller can serve as a
     baseline when developing a more advanced controller.
     """
-    def __init__(self, target=140):
+    def __init__(self, target=140, use_tdd_settings=False):
         self.quest = pd.read_csv(CONTROL_QUEST)
         self.patient_params = pd.read_csv(PATIENT_PARA_FILE)
         self.target = target
+        self.use_tdd_settings = use_tdd_settings
 
     def policy(self, observation, reward, done, **kwargs):
         sample_time = kwargs.get('sample_time', 1)
@@ -54,20 +55,29 @@ class BBController(Controller):
                 name)]
             u2ss = params.u2ss.values.item()  # unit: pmol/(L*kg)
             BW = params.BW.values.item()  # unit: kg
+            TDD = params.TDI.values.item()
         else:
             quest = pd.DataFrame([['Average', 1 / 15, 1 / 50, 50, 30]],
                                  columns=['Name', 'CR', 'CF', 'TDI', 'Age'])
             u2ss = 1.43  # unit: pmol/(L*kg)
             BW = 57.0  # unit: kg
+            TDD = 50
 
-        basal = u2ss * BW / 6000  # unit: U/min
+        if self.use_tdd_settings:
+            basal_pr_hr, isf, cr = self.get_therapy_settings_from_tdd(TDD)
+            basal = basal_pr_hr / 60  # unit: U/hr
+        else:
+            basal = u2ss * BW / 6000  # unit: U/min
+            cr = float(quest.CR.values[0])
+            isf = float(quest.CF.values[0])
+
         if meal > 0:
             logger.info('Calculating bolus ...')
             logger.info(f'Meal = {meal} g/min')
             logger.info(f'glucose = {glucose}')
             bolus = (
-                (meal * env_sample_time) / quest.CR.values + (glucose > 150) *
-                (glucose - self.target) / quest.CF.values).item()  # unit: U
+                (meal * env_sample_time) / cr + (glucose > 150) *
+                (glucose - self.target) / isf).item()  # unit: U
         else:
             bolus = 0  # unit: U
 

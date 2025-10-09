@@ -17,12 +17,13 @@ class LoopController(Controller):
     This is the LoopAlgorithm set with some basic settings.
     """
 
-    def __init__(self, target=140, recommendation_type='tempBasal'):
+    def __init__(self, target=140, recommendation_type='tempBasal', use_tdd_settings=False):
         self.quest = pd.read_csv(CONTROL_QUEST)
         self.patient_params = pd.read_csv(PATIENT_PARA_FILE)
         self.target = target
         self.observations = {}
         self.recommendation_type = recommendation_type
+        self.use_tdd_settings = use_tdd_settings
 
     def policy(self, observation, reward, done, **kwargs):
         sample_time = kwargs.get('sample_time', 1)
@@ -40,16 +41,22 @@ class LoopController(Controller):
                 name)]
             u2ss = params.u2ss.values.item()  # unit: pmol/(L*kg)
             BW = params.BW.values.item()  # unit: kg
+            TDD = params.TDI.values.item()
         else:
             quest = pd.DataFrame([['Average', 1 / 15, 1 / 50, 50, 30]],
                                  columns=['Name', 'CR', 'CF', 'TDI', 'Age'])
             u2ss = 1.43  # unit: pmol/(L*kg)
             BW = 57.0  # unit: kg
+            TDD = 50
 
-        basal = u2ss * BW / 6000  # unit: U/min
-        basal_pr_hr = basal * 60  # unit: U/hr
-        cr = float(quest.CR.values[0])
-        isf = float(quest.CF.values[0])
+        if self.use_tdd_settings:
+            basal_pr_hr, isf, cr = self.get_therapy_settings_from_tdd(TDD)
+            basal = basal_pr_hr / 60  # unit: U/hr
+        else:
+            basal = u2ss * BW / 6000  # unit: U/min
+            basal_pr_hr = basal * 60  # unit: U/hr
+            cr = float(quest.CR.values[0])
+            isf = float(quest.CF.values[0])
 
         # Load previous observations for patient and add the new CGM observation
         df_observations = self.get_patient_observations(key=name)

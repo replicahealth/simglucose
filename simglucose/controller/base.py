@@ -32,3 +32,13 @@ class Controller(object):
         Reset the controller state to inital state, must be implemented
         '''
         raise NotImplementedError
+
+    def get_therapy_settings_from_tdd(self, tdd):
+        """
+        Use TDD to compute therapy settings basal rate, ISF, and CR based on total daily doses
+        """
+        basal_rate = tdd / 24 / 2  # 50% of total insulin as basal
+        isf = 1800 / tdd
+        cr = 500 / tdd
+        return basal_rate, isf, cr
+
