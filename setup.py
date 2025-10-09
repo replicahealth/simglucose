@@ -17,8 +17,7 @@ setup(
         "matplotlib>=3.7.2",
         "numpy>=1.25.0",
         "pandas>=2.0.3",
-        "click>=7.0",
-        "loop_to_python_api",
+        "click>=7.0"
     ],
     include_package_data=True,
     zip_safe=False,
