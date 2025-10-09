@@ -58,13 +58,16 @@ class LoopController(Controller):
             cr = float(quest.CR.values[0])
             isf = float(quest.CF.values[0])
 
+        meal_grams = meal * env_sample_time  # From g/min to g
+
         # Load previous observations for patient and add the new CGM observation
+        # TODO: Shouldn't observations be fetched after we add the new glucose and meal reading?
         df_observations = self.get_patient_observations(key=name)
-        self.add_patient_observation(name, datetime, glucose, np.nan, np.nan, meal)
+        self.add_patient_observation(name, datetime, glucose, np.nan, np.nan, meal_grams)
 
         # If observations for < 3 hrs, return basal=scheduled basal and bolus=0
         if len(df_observations) < (3 * 60 // env_sample_time):
-            self.add_patient_observation(name, datetime, glucose, basal_pr_hr, 0, meal)
+            self.add_patient_observation(name, datetime, glucose, basal_pr_hr, 0, meal_grams)
             return Action(basal=basal, bolus=0)
 
         # Get data input for the Loop Algorithm insulin recommendation
@@ -72,29 +75,24 @@ class LoopController(Controller):
         json_data = get_json_loop_prediction_input_from_df(df_observations, basal_pr_hr, isf, cr,
                                                            prediction_start=datetime, insulin_type='novolog')
 
-        if meal > 0:
-            # Add manual bolus for meals
-            json_data['recommendationType'] = 'manualBolus'
-            dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
-            basal_rec = 0.0
-            bolus_rec = dose_recommendations['manual']['amount']
-            self.add_patient_observation(name, datetime, glucose, basal=basal_rec, bolus=bolus_rec, carbs=meal)
-            action = Action(basal=basal_rec / 60, bolus=bolus_rec / env_sample_time)
-            return action
-
         # Setting max basal to the double of the scheduled basal rate
         json_data['maxBasalRate'] = basal_pr_hr * 2
         json_data['recommendationType'] = self.recommendation_type  # Can be: "automaticBolus", "tempBasal"
-
         dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
         basal_rec = dose_recommendations['automatic']['basalAdjustment']['unitsPerHour']
-        if 'bolusUnits' in dose_recommendations['automatic']:
+
+        if meal > 0:
+            # Add manual bolus for meals. Algorithm does not recommend meal boluses if we do not do this
+            json_data['recommendationType'] = 'manualBolus'
+            dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
+            bolus_rec = dose_recommendations['manual']['amount']
+        elif 'bolusUnits' in dose_recommendations['automatic']:
             bolus_rec = dose_recommendations['automatic']['bolusUnits']
         else:
             bolus_rec = 0.0
 
         # Overwrite patient data iteration with insulin action
-        self.add_patient_observation(name, datetime, glucose, basal=basal_rec, bolus=bolus_rec, carbs=meal)
+        self.add_patient_observation(name, datetime, glucose, basal=basal_rec, bolus=bolus_rec, carbs=meal_grams)
 
         # This is to convert basal (U/hr) and bolus (U) to insulin rate (U/min), as required by the simulation env
         action = Action(basal=basal_rec / 60, bolus=bolus_rec / env_sample_time)
