@@ -157,8 +157,7 @@ class T1DSimGymnaisumEnv(gymnasium.Env):
         )
 
     def step(self, action):
-        obs, reward, terminated, truncated, info = self.env.step(action)
-        return np.array([obs.CGM], dtype=np.float32), reward, terminated, truncated, info
+        return self.env.step(action)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
