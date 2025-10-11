@@ -157,18 +157,8 @@ class T1DSimGymnaisumEnv(gymnasium.Env):
         )
 
     def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        # Truncated will be controlled by TimeLimit wrapper when registering the env.
-        # For example,
-        # register(
-        #     id="simglucose/adolescent2-v0",
-        #     entry_point="simglucose.envs:T1DSimGymnaisumEnv",
-        #     max_episode_steps=10,
-        #     kwargs={"patient_name": "adolescent#002"},
-        # )
-        # Once the max_episode_steps is set, the truncated value will be overridden.
-        truncated = False
-        return np.array([obs.CGM], dtype=np.float32), reward, done, truncated, info
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        return np.array([obs.CGM], dtype=np.float32), reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
