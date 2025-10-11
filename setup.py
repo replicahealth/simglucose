@@ -15,7 +15,7 @@ setup(
         "pathos>=0.3.1",
         "scipy>=1.11.0",
         "matplotlib>=3.7.2",
-        "numpy>=1.25.0",
+        "numpy<1.24",
         "pandas>=2.0.3",
         "click>=7.0"
     ],

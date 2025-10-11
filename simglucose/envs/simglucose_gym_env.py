@@ -46,35 +46,43 @@ class T1DSimEnv(gym.Env):
         self.custom_scenario = custom_scenario
         self.env, _, _, _ = self._create_env()
 
-    def _step(self, action: float):
-        # This gym only controls basal insulin
+    def step(self, action: float):
         act = Action(basal=action, bolus=0)
         if self.reward_fun is None:
-            return self.env.step(act)
-        return self.env.step(act, reward_fun=self.reward_fun)
+            obs, reward, done, info = self.env.step(act)
+        else:
+            obs, reward, done, info = self.env.step(act, reward_fun=self.reward_fun)
+
+        obs_array = np.array([obs.CGM])  # convert to numpy array
+        reward = reward
+        terminated = done
+        truncated = False
+        return obs_array, reward, terminated, truncated, info
 
     def _raw_reset(self):
         return self.env.reset()
 
-    def _reset(self):
-        self.env, _, _, _ = self._create_env()
-        obs, _, _, _ = self.env.reset()
-        return obs
-
-    def _seed(self, seed=None):
-        self.np_random, seed1 = seeding.np_random(seed=seed)
+    def reset(self, *, seed=None, options=None):
+        self.np_random = np.random.default_rng(seed)
         self.env, seed2, seed3, seed4 = self._create_env()
-        return [seed1, seed2, seed3, seed4]
+        obs = self.env.reset()
+        return obs, {"seeds": [seed, seed2, seed3, seed4]}
 
     def _create_env(self):
         # Derive a random seed. This gets passed as a uint, but gets
         # checked as an int elsewhere, so we need to keep it below
         # 2**31.
-        seed2 = seeding.hash_seed(self.np_random.randint(0, 1000)) % 2**31
-        seed3 = seeding.hash_seed(seed2 + 1) % 2**31
-        seed4 = seeding.hash_seed(seed3 + 1) % 2**31
+        base_seed = int(self.np_random.integers(0, 1000))
 
-        hour = self.np_random.randint(low=0.0, high=24.0)
+        # Step 2: deterministically derive seeds from one another
+        def derive_seed(x):
+            return abs(hash(int(x))) % (2 ** 31)
+
+        seed2 = derive_seed(base_seed)
+        seed3 = derive_seed(seed2 + 1)
+        seed4 = derive_seed(seed3 + 1)
+
+        hour = self.np_random.integers(low=0, high=24)
         start_time = datetime(2018, 1, 1, hour, 0, 0)
 
         if isinstance(self.patient_name, list):
@@ -99,12 +107,13 @@ class T1DSimEnv(gym.Env):
         env = _T1DSimEnv(patient, sensor, pump, scenario)
         return env, seed2, seed3, seed4
 
-    def _render(self, mode="human", close=False):
-        self.env.render(close=close)
+    def render(self):
+        if self.render_mode == "human" and hasattr(self.env, "render"):
+            self.env.render()
 
-    def _close(self):
-        super()._close()
-        self.env._close_viewer()
+    def close(self):
+        if hasattr(self.env, "close"):
+            self.env.close()
 
     @property
     def action_space(self):
@@ -130,7 +139,7 @@ class T1DSimGymnaisumEnv(gymnasium.Env):
         custom_scenario=None,
         reward_fun=None,
         seed=None,
-        render_mode=None,
+        render_mode='human',
     ) -> None:
         super().__init__()
         self.render_mode = render_mode
