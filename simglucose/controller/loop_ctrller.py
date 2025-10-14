@@ -17,13 +17,16 @@ class LoopController(Controller):
     This is the LoopAlgorithm set with some basic settings.
     """
 
-    def __init__(self, target=140, recommendation_type='tempBasal', use_tdd_settings=False):
+    def __init__(self, target=140, recommendation_type='tempBasal', use_tdd_settings=False,
+                 use_fully_closed_loop=False, insulin_type='novolog'):
         self.quest = pd.read_csv(CONTROL_QUEST)
         self.patient_params = pd.read_csv(PATIENT_PARA_FILE)
         self.target = target
         self.observations = {}
         self.recommendation_type = recommendation_type
         self.use_tdd_settings = use_tdd_settings
+        self.use_fully_closed_loop = use_fully_closed_loop
+        self.insulin_type = insulin_type
 
     def policy(self, observation, reward, done, **kwargs):
         sample_time = kwargs.get('sample_time', 1)
@@ -73,7 +76,7 @@ class LoopController(Controller):
         # Get data input for the Loop Algorithm insulin recommendation
         df_observations = df_observations.sort_index().tail(int(12*60 // env_sample_time))
         json_data = get_json_loop_prediction_input_from_df(df_observations, basal_pr_hr, isf, cr,
-                                                           prediction_start=datetime, insulin_type='novolog')
+                                                           prediction_start=datetime, insulin_type=self.insulin_type)
 
         # Setting max basal to the double of the scheduled basal rate
         json_data['maxBasalRate'] = basal_pr_hr * 2
@@ -81,7 +84,7 @@ class LoopController(Controller):
         dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
         basal_rec = dose_recommendations['automatic']['basalAdjustment']['unitsPerHour']
 
-        if meal > 0:
+        if (meal > 0) and not self.use_fully_closed_loop:
             # Add manual bolus for meals. Algorithm does not recommend meal boluses if we do not do this
             json_data['recommendationType'] = 'manualBolus'
             dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
