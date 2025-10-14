@@ -63,6 +63,10 @@ class LoopController(Controller):
 
         meal_grams = meal * env_sample_time  # From g/min to g
 
+        if self.use_fully_closed_loop:
+            meal_grams = 0
+            meal = 0
+
         # Load previous observations for patient and add the new CGM observation
         # TODO: Shouldn't observations be fetched after we add the new glucose and meal reading?
         df_observations = self.get_patient_observations(key=name)
@@ -84,7 +88,7 @@ class LoopController(Controller):
         dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
         basal_rec = dose_recommendations['automatic']['basalAdjustment']['unitsPerHour']
 
-        if (meal > 0) and not self.use_fully_closed_loop:
+        if meal > 0:
             # Add manual bolus for meals. Algorithm does not recommend meal boluses if we do not do this
             json_data['recommendationType'] = 'manualBolus'
             dose_recommendations = loop_to_python_api.get_dose_recommendations(json_data)
