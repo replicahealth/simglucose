@@ -48,16 +48,19 @@ class T1DSimEnv(gym.Env):
 
     def step(self, action: float):
         act = Action(basal=action, bolus=0)
+
+        # Call step with optional custom reward function
         if self.reward_fun is None:
             obs, reward, done, info = self.env.step(act)
         else:
             obs, reward, done, info = self.env.step(act, reward_fun=self.reward_fun)
 
-        obs_array = np.array([obs.CGM])  # convert to numpy array
-        reward = reward
-        terminated = done
+        # Convert observation to numpy array
+        obs_array = np.array([obs.CGM])
+        obs_array = obs_array.reshape(1, -1)  # shape (1, 1) -> adds batch dimension
+
         truncated = False
-        return obs_array, reward, terminated, truncated, info
+        return obs_array, reward, done, truncated, info
 
     def _raw_reset(self):
         return self.env.reset()
@@ -65,8 +68,10 @@ class T1DSimEnv(gym.Env):
     def reset(self, *, seed=None, options=None):
         self.np_random = np.random.default_rng(seed)
         self.env, seed2, seed3, seed4 = self._create_env()
-        obs = self.env.reset()
-        return obs, {"seeds": [seed, seed2, seed3, seed4]}
+        step = self.env.reset()
+        obs_array = np.array(step.observation.CGM)
+        obs_array = obs_array.reshape(1, -1)  # shape (1, 1) -> adds batch dimension
+        return obs_array, {"seeds": [seed, seed2, seed3, seed4]}
 
     def _create_env(self):
         # Derive a random seed. This gets passed as a uint, but gets
